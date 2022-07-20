@@ -1,0 +1,56 @@
+version: '3'
+
+services:
+    calculate-php:
+        build:
+            context: .
+            dockerfile: php/Dockerfile
+        container_name: calculate-php
+        restart: unless-stopped
+        volumes:
+            - ../:/var/www/html
+            - ./php/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+        networks:
+            - calculate
+        depends_on:
+            - calculate-nginx
+            - calculate-redis
+            - calculate-db
+    calculate-nginx:
+        image: nginx:latest
+        container_name: calculate-nginx
+        restart: unless-stopped
+        ports:
+            - '${APP_PORT}:80'
+        volumes:
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+            - ../:/var/www/html
+        networks:
+            - calculate
+    calculate-redis:
+        image: redis:alpine
+        container_name: calculate-redis
+        ports:
+            - "${FORWARD_REDIS_PORT}:3306"
+        networks:
+            - calculate
+    calculate-db:
+        image: mysql:5.7
+        container_name: calculate-db
+        restart: unless-stopped
+        tty: true
+        ports:
+            - "${FORWARD_DB_PORT}:3306"
+        environment:
+            MYSQL_DATABASE: '${MYSQL_DATABASE}'
+            MYSQL_USER: '${MYSQL_USER}'
+            MYSQL_PASSWORD: '${MYSQL_PASSWORD}'
+            MYSQL_ROOT_PASSWORD: '${MYSQL_ROOT_PASSWORD}'
+        volumes:
+            - ./mysqldata:/var/lib/mysql/
+        networks:
+            - calculate
+
+networks:
+    calculate:
+        driver: bridge
